@@ -4,7 +4,6 @@ import matplotlib.animation as animation
 import argparse
 from sklearn.datasets import make_classification, make_blobs
 
-
 def load_hard_data(n_samples=50):
     X, y = make_blobs(centers=[[1, 1], [-1, -1]], cluster_std=[1.3, 1.3], n_samples=n_samples)
     y = y * 2 - 1
@@ -24,14 +23,9 @@ class PerceptronClassifier():
     def __init__(self):
         self.w = None
         
-        # 1. predict
-        # 2. score
-        # 3. fit
-
-    def fit(self, X, y, maxiter=1 << 16, w=None):
+    def fit(self, X, y, maxiter=1<<16, w=None):
         """
-        Implement Pocket Perceptron learning algorithm - run for at most maxiter iterations and store
-        best w found as well as the training history
+        Implement Pocket Perceptron learning algorithm - run for at most maxiter iterations and store best w found as well as the training history 
         
         Args:
         X: numpy array shape (n,d) - training data (the first column of X will be ones)
@@ -41,51 +35,17 @@ class PerceptronClassifier():
         
         Stores:
         w: numpy array shape (d,) the best w found.
-        history: list of (w, x, y, acc) - algorithm history so we can animate the algorithm and see what it does:
-            For each iteration of the algorithm store w,
-                                                the misclassified point x and label y used to update w,
-                                                and the current score.
-
-            Remember to store the last w after the iteration is done as well,
-            set x, y to None for that entry. See the commented code for help
+        history: list of (w, x, y, acc) - algorithm history so we can animate the algorithm and see what it does: For each iteration of the algorithm store w, the misclassified point x and label y used to update w, and the current score. Remember to store the last w after the iteration is done as well, set x, y to None for that entry. See the commented code for help
     
         """
         if w is None:
             w = np.zeros(X.shape[1])       
         bestw = w
-        bestscore = 0
         L = []
-        #L.append((w.copy(), X.copy(), y.copy(), bestscore)) # to store current update (before w is updated)
+        # L.append((w.copy(), _x.copy(), _y.copy(), cur_score)) # to store current update (before w is updated)
         ### YOUR CODE
-        iteration = maxiter
-        while iteration >= 0:
-            for index in range(X.shape[0]):
-                xi = X[index]
-                yi = y[index]
-                if np.sign(w.T@xi) != yi:
-                    print("xi {0}\nyi {1}\nw_t {2}\nwTxi {3}\nw_(t+1) {4}\n".format(xi, yi, w, np.sign(w.T@xi), w + yi * xi))
-                    w += yi*xi
-
-                    #cur_score = 0
-                    #for x in X[:]:
-                    #    print(x)
-                    #for _wTx, _yi in zip(wTx, y):
-                    #    if _wTx == _yi:
-                    #        cur_score += 1
-                    #cur_score /= y.shape[0]
-
-                    #if cur_score > bestscore:
-                    #    bestw = w
-                    #    bestscore = cur_score
-                    L.append((w.copy(), xi.copy(), yi.copy(), None))
-                    print("break\n")
-                    break
-                
-            print("iteration: {0}".format(maxiter))
-            iteration -= 1
-
         ### END CODE
-        #L.append((w.copy(), None, None, bestscore)) # to store final w
+        # L.append((w.copy(), None, None, cur_score)) # to store final w
         self.w = bestw
         self.history = L
 
@@ -99,28 +59,19 @@ class PerceptronClassifier():
         """
         pred = None
         ### YOUR CODE HERE 1-2 lines
-
-        pred = [np.dot(np.array(self.w).T, x) for x in X[0]]
-
         ### END CODE
         return pred
 
     def score(self, X, y):
         """ Return accuracy of model on data X with labels y (accuracy is 1/n sum_x,y 1_{x=y)
-
+        
         Args:
           X (numpy array shape n, d)
         returns
           score - classifier accuracy (not error) on data X with labels y (float)
         """
-        score = 0
+        score = 0 
         ### YOUR CODE HERE 1-3 lines
-
-        for wTx, yi in zip(self.predict(X), y):
-            if wTx == yi:
-                score += 1
-        score /= y.shape[0]
-
         ### END CODE
         return score
     
@@ -160,8 +111,7 @@ def make_hyperplane(w, ax):
     return x, y
     """
     if w[1]==0 and w[2]==0:
-        print('Invalid hyperplane')
-        return None, None 
+        return None, None
     # Notice that w1 and w2 are not allowed to be 0 simultaneously, but it may be the case that one of them equals 0
     
     xmin, xmax, ymin, ymax = ax.axis()
@@ -173,19 +123,9 @@ def make_hyperplane(w, ax):
     y = np.array((0,1))
     
     ### YOUR CODE HERE 4-8 lines
-    if not w[1]:
-        x = np.array([-(w[0]/w[2])-((xmin*w[1])/w[2]), -(w[0]/w[2])-((xmin*w[1])/w[2])])
-        y = np.array([xmin, xmax])
-        #print("w1 = {0}, x = {1}, y = {2}".format(w[1],x,y))
-    elif not w[2]:
-        x = np.array([ymin, ymax])
-        y = np.array([-(w[0]/w[1])-((ymin*w[2])/w[1]), -(w[0]/w[1])-((ymin*w[2])/w[1])])
-        #print("w2 = {0}, x = {1}, y = {2}".format(w[2],x,y))
-    else:
-        x = np.array([xmin, -(w[0]/w[1])-((ymin*w[2])/w[1])])
-        y = np.array([-(w[0]/w[2])-((xmin*w[1])/w[2]), ymin])
-        #print("w0 = {0}, w1 = {1}, w2 = {2}, x = {3}, y = {4}".format(w[0],w[1],w[2],x,y))
     ### END CODE
+    
+    return x, y
     
 def run_animation(X, y):
 
