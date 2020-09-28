@@ -57,35 +57,39 @@ class PerceptronClassifier():
         L = []
         #L.append((w.copy(), X.copy(), y.copy(), bestscore)) # to store current update (before w is updated)
         ### YOUR CODE
-        iteration = maxiter
-        while iteration >= 0:
-            for index in range(X.shape[0]):
-                xi = X[index]
-                yi = y[index]
-                if np.sign(w.T@xi) != yi:
-                    print("xi {0}\nyi {1}\nw_t {2}\nwTxi {3}\nw_(t+1) {4}\n".format(xi, yi, w, np.sign(w.T@xi), w + yi * xi))
-                    w += yi*xi
 
-                    #cur_score = 0
-                    #for x in X[:]:
-                    #    print(x)
-                    #for _wTx, _yi in zip(wTx, y):
-                    #    if _wTx == _yi:
-                    #        cur_score += 1
-                    #cur_score /= y.shape[0]
+        # Find an xi for which sign(w^Txi) != yi
+        # change w by w += yi*xi
+        # if this improved the overall score of the perceptron, save w and append w, xi, yi, to the history
+        import random
 
-                    #if cur_score > bestscore:
-                    #    bestw = w
-                    #    bestscore = cur_score
-                    L.append((w.copy(), xi.copy(), yi.copy(), None))
-                    print("break\n")
-                    break
-                
-            print("iteration: {0}".format(maxiter))
-            iteration -= 1
+        self.w = w
+        best_score = 0
+        score = 0
+
+        def get_misclassified():
+            misses = np.where(self.predict(X) != y)[0]
+            if len(misses) == 0:
+                return None
+            else:
+                return random.choice(misses)
+
+        for i in range(maxiter):
+            index = get_misclassified()
+            if index is None:
+                score = 1.0
+                break
+
+            L.append((self.w.copy(), X[index].copy(), y[index].copy(), score))
+
+            self.w += X[index, :] * y[index]
+            score = self.score(X, y)
+            if score > best_score:
+                best_score = score
+                bestw = self.w
 
         ### END CODE
-        #L.append((w.copy(), None, None, bestscore)) # to store final w
+        L.append((self.w.copy(), None, None, score))  # to store final w
         self.w = bestw
         self.history = L
 
@@ -99,8 +103,19 @@ class PerceptronClassifier():
         """
         pred = None
         ### YOUR CODE HERE 1-2 lines
+        """
+               sign(w^T@X^T)
+            sign of w^T@X_i forall i
+                                  |x0,0, x0,1, ... x0,d|T
+            [w0, w1, ..., wn]^T @ |x1,0, x1,1, ... x1,d|
+                                  |...   ...   ... ... |
+                                  |xn,0, xn,0, ... xn,d|
+            -----------------------------------------------------------------------------
+            [(x0,0*w0 + x0,1*w1 +...+ x0,d*wn), ... , (xn,0*w0 + xn,1*w1 +...+ xn,d*wn)]
+            =============================================================================
+        """
 
-        pred = [np.dot(np.array(self.w).T, x) for x in X[0]]
+        pred = np.sign(np.array(self.w).T @ np.array(X).T)
 
         ### END CODE
         return pred
@@ -115,12 +130,7 @@ class PerceptronClassifier():
         """
         score = 0
         ### YOUR CODE HERE 1-3 lines
-
-        for wTx, yi in zip(self.predict(X), y):
-            if wTx == yi:
-                score += 1
-        score /= y.shape[0]
-
+        score = (self.predict(X) == y).mean()
         ### END CODE
         return score
     
@@ -159,34 +169,37 @@ def make_hyperplane(w, ax):
     ax: axis object (to plot on)
     return x, y
     """
-    if w[1]==0 and w[2]==0:
+    if w[1] == 0 and w[2] == 0:
         print('Invalid hyperplane')
-        return None, None 
-    # Notice that w1 and w2 are not allowed to be 0 simultaneously, but it may be the case that one of them equals 0
-    
+        return None, None
+        # Notice that w1 and w2 are not allowed to be 0 simultaneously, but it may be the case that one of them equals 0
+
     xmin, xmax, ymin, ymax = ax.axis()
-    
+
     # Write the code here to create two NumPy arrays called x and y.
     # The arrays x and y will contain the x1's and x2's coordinates of the two endpoints of the line, respectively.
-    
-    x = np.array((0,1))
-    y = np.array((0,1))
-    
+
+    x = np.array((0, 1))
+    y = np.array((0, 1))
+
     ### YOUR CODE HERE 4-8 lines
     if not w[1]:
-        x = np.array([-(w[0]/w[2])-((xmin*w[1])/w[2]), -(w[0]/w[2])-((xmin*w[1])/w[2])])
+        x = np.array([-(w[0] / w[2]) - ((xmin * w[1]) / w[2]), -(w[0] / w[2]) - ((xmin * w[1]) / w[2])])
         y = np.array([xmin, xmax])
-        #print("w1 = {0}, x = {1}, y = {2}".format(w[1],x,y))
+        # print("w1 = {0}, x = {1}, y = {2}".format(w[1],x,y))
     elif not w[2]:
         x = np.array([ymin, ymax])
-        y = np.array([-(w[0]/w[1])-((ymin*w[2])/w[1]), -(w[0]/w[1])-((ymin*w[2])/w[1])])
-        #print("w2 = {0}, x = {1}, y = {2}".format(w[2],x,y))
+        y = np.array([-(w[0] / w[1]) - ((ymin * w[2]) / w[1]), -(w[0] / w[1]) - ((ymin * w[2]) / w[1])])
+        # print("w2 = {0}, x = {1}, y = {2}".format(w[2],x,y))
     else:
-        x = np.array([xmin, -(w[0]/w[1])-((ymin*w[2])/w[1])])
-        y = np.array([-(w[0]/w[2])-((xmin*w[1])/w[2]), ymin])
-        #print("w0 = {0}, w1 = {1}, w2 = {2}, x = {3}, y = {4}".format(w[0],w[1],w[2],x,y))
+        x = np.array([xmin, -(w[0] / w[1]) - ((ymin * w[2]) / w[1])])
+        y = np.array([-(w[0] / w[2]) - ((xmin * w[1]) / w[2]), ymin])
+        # print("w0 = {0}, w1 = {1}, w2 = {2}, x = {3}, y = {4}".format(w[0],w[1],w[2],x,y))
     ### END CODE
-    
+
+    return x, y
+
+
 def run_animation(X, y):
 
     fig, ax = plt.subplots(1, 2, figsize=(12, 10))
@@ -254,8 +267,6 @@ if __name__=='__main__':
     parser.add_argument('-test', action='store_true', default=False)
     parser.add_argument('-easy', action='store_true', default=False)
     parser.add_argument('-hard', action='store_true', default=False)
-    
-    
     args = parser.parse_args()
     if args.test:
         test_pla_train()

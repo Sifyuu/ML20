@@ -23,7 +23,7 @@ class PerceptronClassifier():
     def __init__(self):
         self.w = None
         
-    def fit(self, X, y, maxiter=1<<16, w=None):
+    def fit(self, X, y, maxiter=1 << 16, w=None):
         """
         Implement Pocket Perceptron learning algorithm - run for at most maxiter iterations and store best w found as well as the training history 
         
@@ -37,15 +37,47 @@ class PerceptronClassifier():
         may not seperate the data fully
         hist: list of (w, x, y) - algorithm history - store current w and misclassified point x and label y picked for update in each round of the algorithm. 
         Used only for animation - you can ignore if you do not need animation (remember to take a copies)
-        
-    
         """
         if w is None:
-            w = np.zeros(X.shape[1])       
+            w = np.zeros(X.shape[1])
         bestw = w
+        bestscore = 0
         L = []
+        # L.append((w.copy(), X.copy(), y.copy(), bestscore)) # to store current update (before w is updated)
         ### YOUR CODE
+
+        # Find an xi for which sign(w^Txi) != yi
+        # change w by w += yi*xi
+        # if this improved the overall score of the perceptron, save w and append w, xi, yi, to the history
+        import random
+
+        self.w = w
+        best_score = 0
+        score = 0
+
+        def get_misclassified():
+            misses = np.where(self.predict(X) != y)[0]
+            if len(misses) == 0:
+                return None
+            else:
+                return random.choice(misses)
+
+        for i in range(maxiter):
+            index = get_misclassified()
+            if index is None:
+                score = 1.0
+                break
+
+            L.append((self.w.copy(), X[index].copy(), y[index].copy(), score))
+
+            self.w += X[index, :] * y[index]
+            score = self.score(X, y)
+            if score > best_score:
+                best_score = score
+                bestw = self.w
+
         ### END CODE
+        L.append((self.w.copy(), None, None, score))  # to store final w
         self.w = bestw
         self.history = L
 
@@ -58,6 +90,21 @@ class PerceptronClassifier():
         """
         pred = None
         ### YOUR CODE HERE 1-2 lines
+        """
+               sign(w^T@X^T)
+            sign of w^T@X_i forall i
+                                  |x0,0, x0,1, ... x0,d|T
+            [w0, w1, ..., wn]^T @ |x1,0, x1,1, ... x1,d|
+                                  |...   ...   ... ... |
+                                  |xn,0, xn,0, ... xn,d|
+            -----------------------------------------------------------------------------
+            [(x0,0*w0 + x0,1*w1 +...+ x0,d*wn), ... , (xn,0*w0 + xn,1*w1 +...+ xn,d*wn)]
+            =============================================================================
+        """
+
+        #pred = np.sign(np.array(self.w).T @ np.array(X).T)
+        pred = np.sign(X @ self.w)
+
         ### END CODE
         return pred
 
@@ -69,8 +116,9 @@ class PerceptronClassifier():
         returns
           score (float) classifier accuracy on data X with labels y
         """
-        score = 0 
+        score = 0
         ### YOUR CODE HERE 1-3 lines
+        score = (self.predict(X) == y).mean()
         ### END CODE
         return score
     
@@ -105,21 +153,35 @@ def make_hyperplane(w, ax):
     ax: matplotlib axes object to plot on
     
     """
-    
-    if w[1]==0 and w[2]==0: return (None, None)
-    # Notice that w1 and w2 are not allowed to be 0 simultaneously, but it may be the case that one of them equals 0
-    
-    xmin, xmax, ymin, ymax = plt.axis()
-    
+
+    if w[1] == 0 and w[2] == 0:
+        print('Invalid hyperplane')
+        return None, None
+        # Notice that w1 and w2 are not allowed to be 0 simultaneously, but it may be the case that one of them equals 0
+
+    xmin, xmax, ymin, ymax = ax.axis()
+
     # Write the code here to create two NumPy arrays called x and y.
     # The arrays x and y will contain the x1's and x2's coordinates of the two endpoints of the line, respectively.
-    
+
     x = np.array((0, 1))
     y = np.array((0, 1))
-    
-    ### YOUR CODE HERE 
+
+    ### YOUR CODE HERE 4-8 lines
+    if not w[1]:
+        x = np.array([-(w[0] / w[2]) - ((xmin * w[1]) / w[2]), -(w[0] / w[2]) - ((xmin * w[1]) / w[2])])
+        y = np.array([xmin, xmax])
+        # print("w1 = {0}, x = {1}, y = {2}".format(w[1],x,y))
+    elif not w[2]:
+        x = np.array([ymin, ymax])
+        y = np.array([-(w[0] / w[1]) - ((ymin * w[2]) / w[1]), -(w[0] / w[1]) - ((ymin * w[2]) / w[1])])
+        # print("w2 = {0}, x = {1}, y = {2}".format(w[2],x,y))
+    else:
+        x = np.array([xmin, -(w[0] / w[1]) - ((ymin * w[2]) / w[1])])
+        y = np.array([-(w[0] / w[2]) - ((xmin * w[1]) / w[2]), ymin])
+        # print("w0 = {0}, w1 = {1}, w2 = {2}, x = {3}, y = {4}".format(w[0],w[1],w[2],x,y))
     ### END CODE
-    
+
     return x, y
     
 
@@ -148,13 +210,15 @@ def square_transform(X):
     Xt = X
 
     ### YOUR CODE HERE 2-4 lines
-    ### END CODE 
+    Xt = np.c_[np.ones(X.shape[0]), np.power(X, 2)]#(X @ np.transpose(X))]
+    ### END CODE
     
     return Xt
     
 def plot_contour(w, phi, ax):
     """
-    Make a contour plot showing the decision boundary in the original input space R^2, which is a line in the feature space defined by phi
+    Make a contour plot showing the decision boundary in the original input space R^2,
+    which is a line in the feature space defined by phi
 
     Make a solution with for loops.        
 
@@ -168,6 +232,13 @@ def plot_contour(w, phi, ax):
     xs = ys = np.linspace(-1, 1, nsize)
     img = np.zeros((nsize, nsize)) # makes a 100 x 100 2d array
     ### YOUR CODE
+    for i in range(len(xs)):
+        for j in range(len(ys)):
+            x = xs[i]
+            y = ys[j]
+            f = phi(np.array([[x, y]]))[0]
+            img[i, j] = w @ f
+
     ### END CODE
     cont = ax.contour(xs, ys, img, [0], colors='r', linewidths=3)
     return cont
@@ -185,10 +256,34 @@ def poly_transform(X):
     Returns: 
       numpy arrays shape (n, d) 
     """
-    Xt = X
+    Xt = []
     ### YOUR CODE HERE
+    #size = 4
+    #for x in X:
+    #    t = []
+    #    for i in range(size):       # [0,4)
+    #        for j in range(size-i): # [0,4-i)
+    #            t.append(np.multiply(np.power(x[0], i), np.power(x[1], j)))
+    #    Xt.append(t)
+    #Xt = np.array(Xt)
+    for x in X:
+        Xt.append(
+            [
+                1,
+                x[0],
+                x[1],
+                np.power(x[0], 2),
+                np.power(x[1], 2),
+                np.power(x[0], 3),
+                np.power(x[1], 3),
+                x[0] * x[1],
+                x[0] * np.power(x[1], 2),
+                x[1] * np.power(x[0], 2)
+            ]
+        )
+    # print(Xt)
     ### END CODE
-    return Xt
+    return np.array(Xt)
 
 
 
